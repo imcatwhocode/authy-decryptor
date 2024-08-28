@@ -25,6 +25,7 @@ function decryptSync(seed, salt) {
 
   // Then, we decrypt the seed using AES-256-CBC with the derived key and static IV
   const decipher = createDecipheriv("aes-256-cbc", key, IV);
+  decipher.setAutoPadding(false);
   const ciphertext = Buffer.from(seed, "base64");
   const decrypted = Buffer.concat([
     decipher.update(ciphertext),
