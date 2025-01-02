@@ -8,17 +8,11 @@ const contents = JSON.parse(
   readFileSync(0, "utf8")
 ).authenticator_tokens.filter((t) => t.encrypted_seed !== undefined);
 
-console.log(1);
-
 // The IV is static and equals 16 NULL bytes
 const IV = Buffer.from("00000000000000000000000000000000", "hex");
 
-console.log(2);
-
 // Obtain your backup key from the environment variable
 const backupKey = process.env.BACKUP_KEY;
-
-console.log(3);
 
 /**
  * Decrypts the seed using the backup key and the account's salt
