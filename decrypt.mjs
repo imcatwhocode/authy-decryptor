@@ -1,16 +1,24 @@
 import { readFileSync } from "fs";
 import { createDecipheriv, pbkdf2Sync } from "crypto";
+import fs from 'fs';
+import { v4 as uuidv4, v6 as uuidv6 } from 'uuid';
 
 // Read the JSON from stdin, then filter out non-TOTP tokens
 const contents = JSON.parse(
   readFileSync(0, "utf8")
 ).authenticator_tokens.filter((t) => t.encrypted_seed !== undefined);
 
+console.log(1);
+
 // The IV is static and equals 16 NULL bytes
 const IV = Buffer.from("00000000000000000000000000000000", "hex");
 
+console.log(2);
+
 // Obtain your backup key from the environment variable
 const backupKey = process.env.BACKUP_KEY;
+
+console.log(3);
 
 /**
  * Decrypts the seed using the backup key and the account's salt
@@ -35,9 +43,41 @@ function decryptSync(seed, salt) {
   return decrypted.toString("utf8");
 }
 
-// Iterate over each token and decrypt the seed phrase, then output it to stdout
+// BitWarden format header
+let tobewritten = {
+  "encrypted": false,
+  "folders": [
+      {
+          "id": uuidv4(),
+          "name": "Extracted from Authy"
+      }
+  ],
+  "items": []
+}
+
+// Iterate over each token and decrypt the seed phrase, then output it to stdout, as well as the BitWarden JSON format
 // along with the token's name and original name
 for (const token of contents) {
   const decrypted = decryptSync(token.encrypted_seed, token.salt);
   console.log(`${token.name} (${token.original_name})\t ${decrypted}`);
+  fs.appendFileSync('authyout.txt', `${token.name} (${token.original_name})\t ${decrypted}\n`);
+  tobewritten.items.push({
+    "id": uuidv4(),
+    "organizationId": null,
+    "folderId": tobewritten.folders[0].id,
+    "type": 1,
+    "reprompt": 0,
+    "name": token.name,
+    "notes": token.original_name,
+    "favorite": false,
+    "login": {
+        "username": null,
+        "password": null,
+        "totp": `otpauth://totp/${token.name}?secret=${decrypted}&digits=${token.digits}&period=30`
+    },
+    "collectionIds": null
+  })
 }
+
+// Write the BitWarden JSON to a file
+fs.writeFileSync('authyout.json', JSON.stringify(tobewritten, null, 2));
